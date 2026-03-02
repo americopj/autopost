@@ -1,0 +1,9 @@
+export const mockSlides = [
+  { id: 1, title: "Slide 1", imageUrl: "/placeholder.svg?height=1350&width=1080" },
+  { id: 2, title: "Slide 2", imageUrl: "/placeholder.svg?height=1350&width=1080" },
+  { id: 3, title: "Slide 3", imageUrl: "/placeholder.svg?height=1350&width=1080" },
+  { id: 4, title: "Slide 4", imageUrl: "/placeholder.svg?height=1350&width=1080" },
+  { id: 5, title: "Slide 5", imageUrl: "/placeholder.svg?height=1350&width=1080" },
+]
+
+export default mockSlides
