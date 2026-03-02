@@ -1,0 +1,38 @@
+const USER_ID_KEY = 'autopost_user_id'
+const USERNAME_KEY = 'autopost_username'
+const SELECTED_LOGO_KEY = 'autopost_selected_logo'
+
+/** ID do usuário logado (Supabase Auth). Só é preenchido após login. */
+export function getUserId(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(USER_ID_KEY) ?? ''
+}
+
+/** Define o ID do usuário (chamado pelo auth guard após login). */
+export function setUserId(id: string): void {
+  if (typeof window === 'undefined') return
+  if (id) localStorage.setItem(USER_ID_KEY, id)
+  else localStorage.removeItem(USER_ID_KEY)
+}
+
+export function getUsername(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(USERNAME_KEY) || ''
+}
+
+export function setUsername(username: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(USERNAME_KEY, username)
+}
+
+export function getSelectedLogoIndex(): number {
+  if (typeof window === 'undefined') return 1
+  const saved = localStorage.getItem(SELECTED_LOGO_KEY)
+  return saved ? parseInt(saved, 10) : 1
+}
+
+export function setSelectedLogoIndex(index: number): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(SELECTED_LOGO_KEY, index.toString())
+}
+
