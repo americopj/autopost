@@ -1,0 +1,82 @@
+'use server'
+
+import { createClient } from '@supabase/supabase-js'
+
+const DEBUG_LOG = (payload: Record<string, unknown>) => {
+  console.log('[DEBUG]', JSON.stringify(payload))
+  fetch('http://127.0.0.1:7242/ingest/4381a4bc-5797-43b1-a8a2-d4b54fe60527', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, timestamp: Date.now() }) }).catch(() => {})
+}
+
+export async function uploadImageToSupabase(formData: FormData) {
+  try {
+    // #region agent log
+    const file = formData.get('file') as File
+    DEBUG_LOG({ location: 'upload-image.ts:entry', message: 'uploadImageToSupabase called', data: { hasFile: !!file, fileName: file?.name, fileSize: file?.size, fileType: file?.type }, hypothesisId: 'H3' })
+    // #endregion
+
+    if (!file) {
+      return { error: 'No file provided', url: null, debug: 'hasFile=0' }
+    }
+
+    // Use service role key to bypass RLS
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // #region agent log
+    DEBUG_LOG({ location: 'upload-image.ts:env', message: 'env check', data: { hasSupabaseUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey }, hypothesisId: 'H1' })
+    // #endregion
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    const timestamp = Date.now()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`
+
+    // Convert File to Buffer for upload
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // #region agent log
+    const bucketName = 'IMAGES'
+    DEBUG_LOG({ location: 'upload-image.ts:beforeUpload', message: 'before storage.upload', data: { fileName, bufferLength: buffer.length, contentType: file.type, bucketName }, hypothesisId: 'H2' })
+    // #endregion
+
+    const { data, error } = await supabaseAdmin.storage
+      .from('IMAGES')
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (error) {
+      // #region agent log
+      DEBUG_LOG({ location: 'upload-image.ts:supabaseError', message: 'Supabase storage error', data: { errorMessage: error.message, errorName: (error as any)?.name, errorCode: (error as any)?.code, fullError: String(error) }, hypothesisId: 'H4' })
+      // #endregion
+      console.error('[Server] Supabase upload error:', error)
+      const debug = `hasFile=1 hasUrl=${!!supabaseUrl} hasKey=${!!supabaseServiceKey} bucket=IMAGES supabaseError=${error.message}`
+      return { error: error.message, url: null, debug }
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from('IMAGES')
+      .getPublicUrl(fileName)
+
+    // #region agent log
+    DEBUG_LOG({ location: 'upload-image.ts:success', message: 'upload success', data: { publicUrl: urlData.publicUrl }, hypothesisId: 'ok' })
+    // #endregion
+    return { error: null, url: urlData.publicUrl }
+  } catch (error: any) {
+    // #region agent log
+    DEBUG_LOG({ location: 'upload-image.ts:catch', message: 'upload exception', data: { errorMessage: error?.message, errorName: error?.name }, hypothesisId: 'H5' })
+    // #endregion
+    console.error('[Server] Upload error:', error)
+    const debug = `exception: ${error?.message || String(error)}`
+    return { error: error.message, url: null, debug }
+  }
+}
